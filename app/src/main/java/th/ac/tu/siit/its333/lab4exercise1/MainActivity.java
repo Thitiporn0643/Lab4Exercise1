@@ -12,8 +12,12 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 
+import java.util.concurrent.CountDownLatch;
+
 
 public class MainActivity extends ActionBarActivity {
+
+
 
     CourseDBHelper helper;
 
@@ -21,14 +25,42 @@ public class MainActivity extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        helper  = new CourseDBHelper(this);
 
     }
+
 
     @Override
     protected void onResume() {
         super.onResume();
-
         // This method is called when this activity is put foreground.
+        helper  = new CourseDBHelper(this);
+        SQLiteDatabase db = helper.getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT SUM(credit) cr, SUM(value*credit) gp FROM course;",null);
+        cursor.moveToFirst();
+        int cr= cursor.getInt(0);
+        double  gp= cursor.getDouble(1);
+
+
+
+            double gpa = gp / cr;
+
+        TextView tvGP = (TextView)findViewById(R.id.tvGP);
+        tvGP.setText("0.0");
+
+        TextView tvCR = (TextView)findViewById(R.id.tvCR);
+        tvCR.setText("0");
+
+        TextView tvGPA = (TextView)findViewById(R.id.tvGPA);
+        tvGPA.setText("0.0");
+
+        if(cr>0) {
+           tvGP.setText(Double.toString(gp));
+
+           tvCR.setText(Integer.toString(cr));
+
+            tvGPA.setText(String.format("%.2f", gpa));
+        }
 
     }
 
@@ -49,6 +81,14 @@ public class MainActivity extends ActionBarActivity {
 
             case R.id.btReset:
 
+                helper  = new CourseDBHelper(this);
+
+                SQLiteDatabase db = helper.getWritableDatabase();
+
+                int n_rows = db.delete("course",null, null);
+
+               onResume();
+
                 break;
         }
     }
@@ -61,10 +101,23 @@ public class MainActivity extends ActionBarActivity {
                 int credit = data.getIntExtra("credit", 0);
                 String grade = data.getStringExtra("grade");
 
+                CourseDBHelper helper = new CourseDBHelper(this);
+                SQLiteDatabase db = helper.getWritableDatabase();
+                ContentValues r= new ContentValues();
+
+                r.put("code", code);
+                r.put("credit", credit);
+                r.put("grade", grade);
+                r.put("value",gradeToValue(grade) );
+                long new_id = db.insert("course", null, r);
+
+
             }
         }
 
         Log.d("course", "onActivityResult");
+
+
     }
 
     double gradeToValue(String g) {
@@ -107,4 +160,5 @@ public class MainActivity extends ActionBarActivity {
 
         return super.onOptionsItemSelected(item);
     }
+
 }
